@@ -32,8 +32,9 @@
             <option v-for="t in times" :key="t" :value="t">{{ t }}</option>
           </select>
         </div>
-
-        <button type="submit" class="btn btn-primary">Broneeri</button>
+        <router-link to="/tables">
+          <button type="submit" class="btn btn-primary">Broneeri</button>
+        </router-link>
       </form>
 
       <p v-if="submitted" class="mt-3 text-success">
