@@ -50,5 +50,4 @@ g.selected * {
     fill: #198754 !important;
 }
 
-
 </style>
