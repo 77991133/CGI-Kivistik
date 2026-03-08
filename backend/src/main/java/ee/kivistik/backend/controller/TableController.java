@@ -2,12 +2,10 @@ package ee.kivistik.backend.controller;
 
 import ee.kivistik.backend.entity.TableEntity;
 import ee.kivistik.backend.repository.TableRepository;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
+@CrossOrigin(origins = "http://localhost:5173")
 public class TableController {
     private final TableRepository tableRepository;
 
