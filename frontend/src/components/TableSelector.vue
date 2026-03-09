@@ -1,42 +1,94 @@
 <template>
     <div class="container">
-        <h1>Sulle soovitatud laud:</h1>
-        <div class="map-wrapper" v-html="svgContent"></div>
-        <router-link to="/conformation">
-            <button class="btn btn-primary mt-3">Broneeri</button>
-        </router-link>
+        <h1>Vali laud:</h1>
+        <div ref="wrapper" class="map-wrapper" v-html="svgContent"></div>
+      
     </div>
 
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watchEffect, watch } from 'vue'
 import map from '../assets/floorPlan.svg?raw'
 import axios from "axios"
 const svgContent = ref(map)
 const selectedTable = ref(null)
 
-onMounted(async () => {
-    const wrapper = document.querySelector('.map-wrapper')
-
-    wrapper.addEventListener('click', (e) => {
-        const group = e.target.closest('g[id^="t"]')
-        if (!group) return
-
-        selectedTable.value = group.id
-
-        document
-            .querySelectorAll('g[id^="t"]')
-            .forEach(g => g.classList.remove('selected'))
-
-        group.classList.add('selected')
-
-        console.log('Valiti:', group.id)
-    })
-    
-    importTables()
-    
+const props = defineProps({
+  bookedIds: {
+    type: Array,
+    default: () => []
+  },
+  recommendedIds: {
+    type: Array,
+    default: () => []
+  }
 })
+
+const emit = defineEmits(['table-selected'])
+
+const wrapper = ref(null)
+
+watch(selectedTable, (newSvgId) => {
+  if (newSvgId) {
+    const table = parseTable(newSvgId);
+    emit('table-selected', table.id);
+  }
+})
+
+
+
+onMounted(() => {
+  if (!wrapper.value) return;
+
+  wrapper.value.addEventListener("click",(e)=>{
+
+    const group = e.target.closest("g[id^='t']")
+    // Ära lase broneeritud lauda valida
+    if(!group || group.classList.contains('booked')) return
+
+    selectedTable.value = group.id
+
+  })
+
+  // Vali automaatselt parim laud (esimene soovitus)
+  if (props.recommendedIds.length > 0) {
+    const bestId = props.recommendedIds[0];
+    const groups = wrapper.value.querySelectorAll("svg g[id^='t']");
+    for (const g of groups) {
+      if (parseTable(g.id).id === bestId) {
+        selectedTable.value = g.id;
+        break;
+      }
+    }
+  }
+
+  // importTables()
+
+})
+
+watchEffect(() => {
+  if (!wrapper.value) return;
+
+  const groups = wrapper.value.querySelectorAll("svg g[id^='t']");
+  groups.forEach(g => {
+    const tableId = parseTable(g.id).id;
+    const isSelected = selectedTable.value === g.id;
+
+    g.classList.remove('booked', 'selected', 'recommended', 'best');
+
+    if (tableId !== null && props.bookedIds.includes(tableId)) {
+      g.classList.add('booked');
+    } else if (isSelected) {
+      g.classList.add('selected');
+    } else if (tableId !== null && props.recommendedIds.length > 0 && props.recommendedIds[0] === tableId) {
+      g.classList.add('best');
+    } else if (tableId !== null && props.recommendedIds.includes(tableId)) {
+      g.classList.add('recommended');
+    }
+  });
+});
+
 function parseTable(id){
 
   const parts = id.split("-")
@@ -81,13 +133,13 @@ function parseTable(id){
 
 function importTables(){
 
-  const groups = document.querySelectorAll("svg g")
+  const groups = wrapper.value.querySelectorAll("svg g[id^='t']")
 
   groups.forEach(g=>{
 
     const table = parseTable(g.id)
     console.log(table)
-    if (table.id!=null) {
+    if (table.id!=null && table.seats!=null) {
        axios.post("http://localhost:8080/tables",table) 
     }
     
@@ -98,16 +150,38 @@ function importTables(){
 </script>
 
 <style>
-g[id^="table"] {
+/* Make SVG visible and responsive */
+.map-wrapper svg {
+    max-width: 600px;
+    width: 100%;
+    height: auto;
+}
+
+g[id^="t"] {
     cursor: pointer;
     transition: 0.2s ease;
 }
 
-g[id^="table"]:hover * {
+g[id^="t"]:hover * {
     fill: #0d6efd !important;
 }
 
 g.selected * {
     fill: #198754 !important;
+}
+
+/* Stiil broneeritud laudadele */
+g.booked *,
+g.booked:hover * {
+    fill: #dc3545 !important; /* Punane */
+    cursor: not-allowed;
+}
+
+/* Stiil soovitatud laudadele */
+g.recommended * {
+    fill: #0dcaf0 !important; /* Hele-sinine (cyan) */
+}
+g.best * {
+    fill: #2def74 !important; 
 }
 </style>

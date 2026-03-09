@@ -17,17 +17,13 @@ public class ReservationEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     private Integer id;
-
+    private String name;
     @ManyToOne
     @JoinColumn(name = "table_id")
     private TableEntity table;
-    private Integer people;
-    private boolean wantsWindow;
-    private boolean accessible;
-    private String location;
-    private boolean kids;
     private LocalDate date;
     private LocalTime time;
+    private Integer people;
 
 
 }

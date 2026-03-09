@@ -1,7 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import HomePage from '../components/HomePage.vue'
 import BookingForm from '../components/BookingForm.vue'
-import TableSelector from '../components/TableSelector.vue'
 import ConformationView from '../components/ConformationView.vue'
 
 const router = createRouter({
@@ -16,11 +15,6 @@ const router = createRouter({
       path: '/booking',
       name: 'booking',
       component: BookingForm
-    },
-    {
-      path: '/tables',
-      name: 'tables',
-      component: TableSelector
     }
     ,
     {
