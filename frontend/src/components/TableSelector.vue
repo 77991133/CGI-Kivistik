@@ -1,10 +1,10 @@
 <template>
-    <div class="container">
-        <h1>Vali laud:</h1>
-        <div ref="wrapper" class="map-wrapper" v-html="svgContent"></div>
-      
-    </div>
+  <div>
+    <h2 class="text-center mb-3">Vali laud</h2>
+    <div ref="wrapper" class="map-wrapper" v-html="svgContent">
 
+    </div>
+  </div>
 </template>
 
 <script setup>
@@ -41,11 +41,11 @@ watch(selectedTable, (newSvgId) => {
 onMounted(() => {
   if (!wrapper.value) return;
 
-  wrapper.value.addEventListener("click",(e)=>{
+  wrapper.value.addEventListener("click", (e) => {
 
     const group = e.target.closest("g[id^='t']")
     // Ära lase broneeritud lauda valida
-    if(!group || group.classList.contains('booked')) return
+    if (!group || group.classList.contains('booked')) return
 
     selectedTable.value = group.id
 
@@ -89,60 +89,60 @@ watchEffect(() => {
   });
 });
 
-function parseTable(id){
+function parseTable(id) {
 
   const parts = id.split("-")
 
   const table = {
-    id:null,
-    seats:null,
-    hasWindow:false,
-    accessible:false,
-    location:"",
-    kids:false,
-    neighbours:[]
+    id: null,
+    seats: null,
+    hasWindow: false,
+    accessible: false,
+    location: "",
+    kids: false,
+    neighbours: []
   }
 
-  parts.forEach(p=>{
+  parts.forEach(p => {
 
-    if(p.startsWith("t"))
+    if (p.startsWith("t"))
       table.id = parseInt(p.slice(1))
 
-    if(p.startsWith("s"))
+    if (p.startsWith("s"))
       table.seats = parseInt(p.slice(1))
 
-    if(p.startsWith("w"))
+    if (p.startsWith("w"))
       table.hasWindow = p.slice(1) === "1"
 
-    if(p.startsWith("a"))
+    if (p.startsWith("a"))
       table.accessible = p.slice(1) === "1"
 
-    if(p.startsWith("k"))
+    if (p.startsWith("k"))
       table.kids = p.slice(1) === "1"
 
-    if(p.startsWith("l"))
+    if (p.startsWith("l"))
       table.location = p.slice(1)
 
-    if(p.startsWith("n"))
-      table.neighbours = p.slice(1).split(",").map(n=>parseInt(n))
+    if (p.startsWith("n"))
+      table.neighbours = p.slice(1).split(",").map(n => parseInt(n))
 
   })
 
   return table
 }
 
-function importTables(){
+function importTables() {
 
   const groups = wrapper.value.querySelectorAll("svg g[id^='t']")
 
-  groups.forEach(g=>{
+  groups.forEach(g => {
 
     const table = parseTable(g.id)
     console.log(table)
-    if (table.id!=null && table.seats!=null) {
-       axios.post("http://localhost:8080/tables",table) 
+    if (table.id != null && table.seats != null) {
+      axios.post("http://localhost:8080/tables", table)
     }
-    
+
 
   })
 
@@ -152,36 +152,39 @@ function importTables(){
 <style>
 /* Make SVG visible and responsive */
 .map-wrapper svg {
-    max-width: 600px;
-    width: 100%;
-    height: auto;
+  max-width: 600px;
+  width: 100%;
+  height: 286px;
 }
 
 g[id^="t"] {
-    cursor: pointer;
-    transition: 0.2s ease;
+  cursor: pointer;
+  transition: 0.2s ease;
 }
 
 g[id^="t"]:hover * {
-    fill: #0d6efd !important;
+  fill: #0d6efd !important;
 }
 
 g.selected * {
-    fill: #198754 !important;
+  fill: #198754 !important;
 }
 
 /* Stiil broneeritud laudadele */
 g.booked *,
 g.booked:hover * {
-    fill: #dc3545 !important; /* Punane */
-    cursor: not-allowed;
+  fill: #dc3545 !important;
+  /* Punane */
+  cursor: not-allowed;
 }
 
 /* Stiil soovitatud laudadele */
 g.recommended * {
-    fill: #0dcaf0 !important; /* Hele-sinine (cyan) */
+  fill: #0dcaf0 !important;
+  /* Hele-sinine (cyan) */
 }
+
 g.best * {
-    fill: #2def74 !important; 
+  fill: #2def74 !important;
 }
 </style>
