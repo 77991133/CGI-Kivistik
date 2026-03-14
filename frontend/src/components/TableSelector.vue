@@ -156,9 +156,6 @@ watchEffect(() => {
 
 /**
  * Parses the table properties from the SVG group ID string.
- * NOTE: This is a fragile approach. Ideally, all table properties should be fetched
- * from the backend, and the SVG ID should only be used to link the DOM element
- * to the data object. This would decouple the frontend logic from the SVG structure.
  * @param {string} id The SVG group ID (e.g., "t1-s4-w1-lmain").
  * @returns {object} A table object with parsed properties.
  */

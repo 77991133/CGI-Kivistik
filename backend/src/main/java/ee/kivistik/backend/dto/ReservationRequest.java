@@ -1,19 +1,21 @@
 package ee.kivistik.backend.dto;
 
-import ee.kivistik.backend.entity.TableEntity;
+import lombok.Data;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
 
+/**
+ * Data Transfer Object used for requesting table recommendations.
+ */
+@Data
 public class ReservationRequest {
 
-    public Integer seats;
-    public boolean kids;
-    public boolean hasWindow;
-    public boolean accessible;
-    public String location;
-    public LocalDate date;
-    public LocalTime time;
-
-
+    private Integer seats;
+    private boolean kids;
+    private boolean hasWindow;
+    private boolean accessible;
+    private String location;
+    private LocalDate date;
+    private LocalTime time;
 }
