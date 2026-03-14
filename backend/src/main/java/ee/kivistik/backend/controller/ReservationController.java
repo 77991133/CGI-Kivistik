@@ -2,17 +2,13 @@ package ee.kivistik.backend.controller;
 
 import ee.kivistik.backend.dto.Reservation;
 import ee.kivistik.backend.dto.ReservationRequest;
+import ee.kivistik.backend.dto.TableRecommendationResponse;
 import ee.kivistik.backend.entity.ReservationEntity;
 import ee.kivistik.backend.entity.TableEntity;
 import ee.kivistik.backend.repository.ReservationRepository;
 import ee.kivistik.backend.repository.TableRepository;
 import ee.kivistik.backend.service.ReservationService;
-import org.springframework.data.jpa.repository.Query;
 import org.springframework.web.bind.annotation.*;
-
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.util.List;
 
 @RestController
 @CrossOrigin(origins = "http://localhost:5173")
@@ -28,7 +24,7 @@ public class ReservationController {
     }
 
     @GetMapping("/bookings")
-    public Iterable<ReservationEntity> findAllTables() {
+    public Iterable<ReservationEntity> findAllReservations() {
         return this.reservationRepository.findAll();
     }
 
@@ -52,7 +48,7 @@ public class ReservationController {
     }
 
     @PostMapping("/available-tables")
-    public List<TableEntity> getAvailableTables(@RequestBody ReservationRequest request) {
+    public TableRecommendationResponse getAvailableTables(@RequestBody ReservationRequest request) {
         return reservationService.findBestTables(request);
     }
 

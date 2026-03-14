@@ -54,9 +54,9 @@
       </form>
     </div>
     <div class="map-area p-4 border rounded" v-if="submitted">
-      <TableSelector :recommended-ids="recommendedTables" :booked-ids="bookedTables"
-        @table-selected="handleTableSelection"></TableSelector>
-      <button class="btn btn-primary mt-3 w-100" @click="addReservation" :disabled="!selectedTableId">
+      <TableSelector :recommended-ids="recommendedTables" :initial-selection-ids="initialSelection"
+        :booked-ids="bookedTables" :user-seats="seat" :is-combined="isCombined" @table-selected="handleTableSelection"></TableSelector>
+      <button class="btn btn-primary mt-3 w-100" @click="addReservation" :disabled="selectedTableIds.length === 0">
         Broneeri
       </button>
     </div>
@@ -67,20 +67,23 @@
 import { ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import Datepicker from 'vue3-datepicker'
+// Import Estonian locale for the date picker.
 import { et } from 'date-fns/locale'
 import TableSelector from './TableSelector.vue';
 import axios from 'axios';
 import { format, isToday } from 'date-fns';
 
-
+// --- Time Selection Logic ---
 const time = ref('')
 const allTimes = []
-// Gemini was used for validating date and time to be in the future
+// Generate time slots from 10:00 to 22:30.
 for (let h = 10; h <= 22; h++) {
   allTimes.push(`${String(h).padStart(2, '0')}:00`)
   if (h < 22) allTimes.push(`${String(h).padStart(2, '0')}:30`)
 }
 
+// --- Date Selection Logic ---
+// Set the minimum selectable date to today.
 const today = new Date();
 today.setHours(0, 0, 0, 0);
 
@@ -89,6 +92,7 @@ const times = computed(() => {
     return allTimes;
   }
 
+  // If the selected date is today, filter out past time slots.
   const now = new Date();
   const currentHour = now.getHours();
   const currentMinutes = now.getMinutes();
@@ -102,34 +106,49 @@ const times = computed(() => {
   });
 });
 
+// --- Form State ---
 const name = ref('')
 const date = ref(new Date())
-const submitted = ref(false)
-const recommendedTables = ref([])
-const bookedTables = ref([])
 const window = ref(false)
 const kidsCorner = ref(false)
 const accessible = ref(false)
 const location = ref('main')
 const seat = ref(null)
-const selectedTableId = ref(null)
+
+// --- Table Selection State ---
+const submitted = ref(false) // Controls visibility of the table selector.
+const recommendedTables = ref([]) // All tables recommended by the backend.
+const bookedTables = ref([]) // Tables that are booked for the selected time.
+const selectedTableIds = ref([])
+const initialSelection = ref([]) // Tables to be pre-selected (best fit or combination).
+const isCombined = ref(false)
+
 const router = useRouter()
 
-function handleTableSelection(tableId) {
-  selectedTableId.value = tableId;
+// Event handler for when tables are selected in the TableSelector component.
+function handleTableSelection(ids) {
+  selectedTableIds.value = ids;
 }
 
+// Watch for changes in the selected date.
 watch(date, () => {
+  // If the date changes, reset the time if the old time is no longer valid.
   if (time.value && !times.value.includes(time.value)) {
     time.value = '';
   }
 });
 
+// --- Form Actions ---
+
+/**
+ * Creates the reservation(s) by sending POST requests to the backend.
+ */
 async function addReservation() {
-  if (!selectedTableId.value) {
+  if (selectedTableIds.value.length === 0) {
     alert("Palun vali laud kaardilt.");
     return;
   }
+  // Basic validation.
   if (!name.value || !date.value || !time.value) {
     alert("Nimi, kuupäev ja kellaaeg on kohustuslikud.");
     return;
@@ -137,18 +156,28 @@ async function addReservation() {
 
   try {
     const formattedDate = format(date.value, 'yyyy-MM-dd');
-    const reservationData = {
+
+    // Common data for the confirmation page and for each booking request.
+    const confirmationData = {
       customerName: name.value,
-      tableId: selectedTableId.value,
       date: formattedDate,
       time: time.value,
       seats: seat.value
     };
-    console.log("res ", reservationData);
-    await axios.post('http://localhost:8080/bookings', reservationData);
+
+    // Create an array of booking promises, one for each selected table.
+    const bookingPromises = selectedTableIds.value.map(tableId => {
+      const singleReservationData = { ...confirmationData, tableId: tableId };
+      return axios.post('http://localhost:8080/bookings', singleReservationData);
+    });
+
+    // Wait for all booking requests to complete successfully.
+    await Promise.all(bookingPromises);
+
+    // Navigate to the confirmation page, passing reservation data via history state.
     router.push({
       path: '/conformation',
-      state: { reservationData }
+      state: { reservationData: confirmationData }
     });
   } catch (error) {
     console.error("Broneerimisel tekkis viga:", error);
@@ -156,25 +185,28 @@ async function addReservation() {
   }
 }
 
+/**
+ * Submits the search form to find available tables.
+ */
 async function submitBooking() {
+  // Basic validation.
   if (!date.value || !time.value) {
     alert("Palun valige kuupäev ja kellaaeg.");
     return;
   }
-  console.log(new Date().toISOString().split('-'));
-  // Värskendame laudade vaadet iga otsinguga
+   if (seat.value <= 0) {
+    alert("Palun lisage inimesi!");
+    return;
+  }
+  // Reset the table view on each new search.
   submitted.value = false;
-  selectedTableId.value = null; // Nulli valik uuel otsingul
+  selectedTableIds.value = [];
+  initialSelection.value = [];
+  isCombined.value = false;
   try {
     const formattedDate = format(date.value, 'yyyy-MM-dd');
 
-    console.log(seat.value,
-      kidsCorner.value,
-      window.value,
-      accessible.value,
-      location.value,
-      formattedDate,
-      time.value,);
+
     const response = await axios.post('http://localhost:8080/available-tables', {
       seats: seat.value,
       kids: kidsCorner.value,
@@ -185,15 +217,29 @@ async function submitBooking() {
       time: time.value,
     });
 
-    const availableTableIds = response.data.map(table => table.id);
-    recommendedTables.value = availableTableIds;
+    const searchResult = response.data;
+    console.log("Recommended tables:", searchResult.tables);
+    console.log("Is combined solution:", searchResult.combined);
+    console.log("Booked table IDs:", searchResult.bookedTableIds);
 
-    // Eeldame, et on olemas endpoint, mis tagastab KÕIK lauad.
-    const allTablesResponse = await axios.get('http://localhost:8080/tables');
-    const allTableIds = allTablesResponse.data.map(table => table.id);
+    // If no tables are found, inform the user and stop.
+    if (!searchResult.tables || searchResult.tables.length === 0) {
+      alert("Antud valikutega vabu laudu ei leitud. Palun proovige teist aega või kuupäeva.");
+      return;
+    }
 
-    // Arvutame broneeritud lauad: kõik lauad, mis EI OLE vabade laudade nimekirjas.
-    bookedTables.value = allTableIds.filter(id => !availableTableIds.includes(id));
+    // Set all recommended tables for highlighting
+    recommendedTables.value = searchResult.tables.map(t => t.id);
+
+    // Determine which tables to pre-select based on whether it's a combined solution
+    if (searchResult.combined) {
+      initialSelection.value = searchResult.tables.map(t => t.id);
+    } else {
+      initialSelection.value = [searchResult.tables[0].id];
+    }
+
+    bookedTables.value = searchResult.bookedTableIds;
+    isCombined.value = searchResult.combined;
 
     submitted.value = true;
   } catch (error) {

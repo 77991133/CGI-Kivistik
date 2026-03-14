@@ -1,6 +1,7 @@
 package ee.kivistik.backend.service;
 
 import ee.kivistik.backend.dto.ReservationRequest;
+import ee.kivistik.backend.dto.TableRecommendationResponse;
 import ee.kivistik.backend.entity.ReservationEntity;
 import ee.kivistik.backend.entity.TableEntity;
 import ee.kivistik.backend.repository.ReservationRepository;
@@ -9,9 +10,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.util.Collections;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -29,20 +28,70 @@ public class ReservationService {
      * Tagastab parimad vabad lauad vastavalt broneeringu soovile.
      * Kui broneeringuid pole, genereeritakse automaatselt mõned juhuslikud.
      */
-    public List<TableEntity> findBestTables(ReservationRequest request) {
+    public TableRecommendationResponse findBestTables(ReservationRequest request) {
 
         LocalTime startTime = request.time.minusHours(2);
         LocalTime endTime = request.time.plusHours(1);
 
-        // Saame juba broneeritud laudade ID-d või genereerime juhuslikud
         List<Integer> bookedTableIds = getBookedTables(request.date, startTime, endTime);
 
-        // Filtreerime ja skoorime vabad lauad
-        return tableRepository.findAll().stream()
+        List<TableEntity> recommendedTables = tableRepository.findAll().stream()
                 .filter(t -> !bookedTableIds.contains(t.getId()))
                 .filter(t -> t.getSeats() >= request.seats)
                 .sorted((a, b) -> score(b, request) - score(a, request))
                 .collect(Collectors.toList());
+        if (!recommendedTables.isEmpty()) {
+            TableRecommendationResponse response = new TableRecommendationResponse();
+            response.tables = recommendedTables;
+            response.combined = false;
+            response.bookedTableIds = bookedTableIds;
+
+            return response;
+        } else {
+
+            List<TableEntity> freeTables = tableRepository.findAll().stream()
+                    .filter(t -> !bookedTableIds.contains(t.getId())).toList();
+
+            for (TableEntity table : freeTables) {
+                int seats = table.getSeats();
+                List<Integer> neighbours = table.getNeighbours();
+                List<TableEntity> currentTables = new ArrayList<>();
+                if (!neighbours.isEmpty()) {
+                    for (int i = 0; i < neighbours.size(); i++) {
+                        currentTables.add(table);
+                        Optional<TableEntity> neighbour = tableRepository.findById(neighbours.get(i));
+                        if (neighbour.isPresent() && !bookedTableIds.contains(neighbours.get(i))) {
+                            TableEntity currentNeighbour = neighbour.get();
+                            if (seats + currentNeighbour.getSeats() >= request.seats) {
+                                currentTables.add(currentNeighbour);
+                                TableRecommendationResponse response = new TableRecommendationResponse();
+                                response.tables = currentTables;
+                                response.combined = true;
+                                response.bookedTableIds = bookedTableIds;
+                                return response;
+                            } else {
+                                seats += currentNeighbour.getSeats();
+                                currentTables.add(currentNeighbour);
+                                for (Integer neiboudId : currentNeighbour.getNeighbours()) {
+                                    if ((!Objects.equals(table.getId(), neiboudId)) && !neighbours.contains(neiboudId) && !bookedTableIds.contains(neiboudId)) {
+                                        neighbours.add(neiboudId);
+                                    }
+
+                                }
+                            }
+                        }
+
+                    }
+                }
+            }
+
+        }
+        TableRecommendationResponse response = new TableRecommendationResponse();
+        response.tables = null;
+        response.combined = true;
+        response.bookedTableIds = bookedTableIds;
+        return response;
+
     }
 
     /**
@@ -54,7 +103,7 @@ public class ReservationService {
         score += 20 - Math.abs(table.getSeats() - req.seats) * 5;
 
         if (req.hasWindow && table.isHasWindow()) score += 10;
-        if (req.kids && table.isKids()) score += 10;
+        if (req.kids && table.isKids())  score += 10;
         if (req.accessible && table.isAccessible()) score += 30;
         if (req.location.equals(table.getLocation())) score += 10;
 
@@ -78,7 +127,7 @@ public class ReservationService {
     }
 
     /**
-     * Genereerib 1–3 juhuslikku broneeringut
+     * Genereerib 1–4 juhuslikku broneeringut
      */
     private void generateRandomReservations(LocalDate date, LocalTime time) {
 
@@ -86,7 +135,7 @@ public class ReservationService {
         Collections.shuffle(tables);
 
         Random random = new Random();
-        int amount = random.nextInt(4) + 1; // 1-3 broneeringut
+        int amount = random.nextInt(4) + 1; 
 
         for (int i = 0; i < amount && i < tables.size(); i++) {
             ReservationEntity r = new ReservationEntity();
