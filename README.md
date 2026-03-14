@@ -34,18 +34,18 @@ Clone the repository:
    ```bash
    git clone https://github.com/77991133/CGI-Kivistik.git
    cd restaurant-reservation/backend
-   ´´´
- Configure PostgreSQL database in application.properties or application.yml:
- ```
+   ```
+Configure PostgreSQL database in application.properties or application.yml:
+```
 spring.datasource.url=jdbc:postgresql://localhost:5432/restaurant
 spring.datasource.username=your_db_username
 spring.datasource.password=your_db_password
 spring.jpa.hibernate.ddl-auto=update
-´´´
+```
 Build and run backend:
- ```
+```
 ./mvnw spring-boot:run
-´´´
+```
 
 ### Frontend Setup
 
@@ -56,13 +56,13 @@ Frontend Setup
 Navigate to the frontend directory:
 ```
 cd ../frontend
-´´´
+```
 Install dependencies:
 ```
 npm install
-´´´
+```
 Run frontend:
 ```
 npm run dev
-´´´
+```
 Open browser at http://localhost:5173
