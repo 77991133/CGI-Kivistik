@@ -70,12 +70,15 @@ npm run dev
 ```
 Open browser at http://localhost:5173
 
-### Database Seeding (First Run) 
-+ +The application requires table data in the database to function correctly. 
-+1. Open frontend/src/components/TableSelector.vue. 
-+2. Uncomment the importTables() function call inside the onMounted hook. (Line 128)
-+3. Run the application and open the booking page once. This will parse the SVG and populate the database. 
-+4. Comment importTables() back out to prevent duplicate entries on subsequent reloads.'
+### Database Seeding (First Run)
+
+The application requires table data in the database to function correctly.
+
+1. Open `frontend/src/components/TableSelector.vue`.
+2. Uncomment the `importTables()` function call inside the `onMounted` hook (around line 128).
+3. Run the application and open the booking page once.  
+   This will parse the SVG and populate the database with table data.
+4. After the tables have been imported, comment out `importTables()` again to prevent duplicate entries on subsequent reloads.
 
 ## Project Reflection
 
